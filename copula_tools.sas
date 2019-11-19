@@ -72,6 +72,34 @@
 | Arguments: u [REQ] = 1 Dim array with mv copula variables
 |            o [REQ] = 2 Dim array with Gauss copula dependence matrix  
 |
+|---------------------------------------------------------------------------------
+| Name     : clayton_bvc_cdf(u,v,o) 
+| Purpose  : CDF for Clayton bivariate copula 
+| Arguments: u [REQ] = First uniform margin
+|            v [REQ] = Second uniform margin 
+|            o [REQ] = Clayton copula dependence parameter  
+|
+|---------------------------------------------------------------------------------
+| Name     : clayton_bvc_hdf_c(u,v,o) 
+| Purpose  : Conditional CDF given continous v for Clayton bivariate copula 
+| Arguments: u [REQ] = First uniform margin
+|            v [REQ] = Second uniform margin 
+|            o [REQ] = Clayton copula dependence parameter  
+|
+|---------------------------------------------------------------------------------
+| Name     : clayton_bvc_pdf_cc(u,v,o) 
+| Purpose  : PDF for continous u and v for Clayton bivariate copula 
+| Arguments: u [REQ] = First uniform margin 
+|            v [REQ] = Second uniform margin
+|            o [REQ] = Clayton copula dependence parameter  
+|
+|---------------------------------------------------------------------------------
+| Name     : clayton_bvc_sim(u,v,o) 
+| Purpose  : Simulates pairs of u and v from Clayton bivariate copula 
+| Arguments: u [REQ] = Variable to hold first margin (must be initialized)
+|            v [REQ] = Variable to hold second margin (must be initialized)
+|            o [REQ] = Clayton copula dependence parameter 
+|
 ***********************************************************************************/;
 
 proc fcmp outlib = work.functions.copulas;
@@ -107,7 +135,7 @@ proc fcmp outlib = work.functions.copulas;
   endsub;  
 
 
-  *** CONDITIONAL GAUSS COPULA CDF (CALLED AN H-FUNCTION) WHEN CONDITIONING VAR IS CONTINUOUS ***;
+  *** CONDITIONAL GAUSS COPULA CONDITIONAL CDF (CALLED AN H-FUNCTION) WHEN CONDITIONING VAR IS CONTINUOUS ***;
   function gauss_bvc_hdf_c(u,v,o);
     if u=0 then _hdf = 0;                       
     else if u=1 then _hdf = 1;      
@@ -247,9 +275,90 @@ proc fcmp outlib = work.functions.copulas;
   *** FCMP BIVARIATE T COPULA FUNCTIONS                                          ***;
   **********************************************************************************;
    
+  *** TO CHECK ***;
+
+/*  *** T COPULA PARTIAL DERIVATIVE ***;*/
+/*  function t_copula_hf(u,v,theta,df);*/
+/*    copula_f = probt( (tinv(u,df) - theta*tinv(v,df)) / ( sqrt((df + (tinv(v,df)**2))*(1-(theta**2))   / (df+1) )) ,df+1);*/
+/*    return(copula_f);*/
+/*  endsub;*/
+
+
+/*  *** CONDITIONAL T COPULA CDF (CALLED AN H-FUNCTION) WHEN CONDITIONING VAR IS CONTINUOUS ***;*/
+/*  function t_bvc_hdf_c(u,v,o);*/
+/*    if u=0 then _hdf = 0;                       */
+/*    else if u=1 then _hdf = 1;      */
+/*    else if (0<u<1) then do;    */
+/*     _itu  = tinv(min(max(u,1.0e-10),1-1.0e-10), df);*/
+/*     _itv  = tinv(min(max(v,1.0e-10),1-1.0e-10), df);*/
+/*     _hdf = probt( (_tinvu - (o*_tinvv)) / ( sqrt((df + (_tinvv**2)*(1-(o**2)) / (df+1) )) ,df+1)*/
+/*    end;*/
+/*    return(_hdf);*/
+/*  endsub;*/
+
+
+
+
+
+
+  **********************************************************************************;
+  *** FCMP BIVARIATE CLAYTON COPULA FUNCTIONS                                    ***;
+  **********************************************************************************;
+
+
+  *** CLAYTON COPULA CDF ***;
+  function clayton_bvc_cdf(u,v,o);
+    if (u=0) or (v=0) then _cdf = 0;                *** COPULA PROPERTY 1:  C(0,V) = C(U,0) = C(0,0) = 0 ***;
+    else if (u=1) and (v=1) then _cdf = 1;          *** COPULA PROPERTY 2:  C(1,1) = 1 ***;
+    else if (0<u<1) and (v=1) then _cdf = u;        *** COPULA PROPERTY 3:  C(U,1) = U ***;
+    else if (u=1) and (0<v<1) then _cdf = v;        *** COPULA PROPERTY 4:  C(1,V) = V ***;
+    else if (0<u<1) and (0<v<1) then do;            *** IF BETWEEN (0,1) FOR U AND V   ***;   
+      _cdf = (u**(-1*o) + v**(-1*o) - 1)**(-1/o);     
+    end;
+    return (_cdf);
+  endsub;
+
+
+  *** CLAYTON COPULA PDF FOR CONTINUOUS MARGINS ***;
+  function clayton_bvc_pdf_cc(u,v,o);
+	_pdf = (1+o)*((u*v)**(-1-o)) / ( ( u**(-1*o) + v**(-1*o) - 1 )**((1/o)+2) );
+    return(_pdf);
+  endsub;  
+
+
+  *** CONDITIONAL CLAYTON COPULA CONDITIONAL CDF (CALLED AN H-FUNCTION) WHEN CONDITIONING VAR IS CONTINUOUS ***;
+  function clayton_bvc_hdf_c(u,v,o);
+    if u=0 then _hdf = 0;                       
+    else if u=1 then _hdf = 1;      
+    else if (0<u<1) then do;    
+      _hdf = ( v**(-1*o-1) )*( u**(-1*o) + v**(-1*o) - 1 )**( -1-(1/o) );   
+    end;
+    return(_hdf); 
+  endsub;
+
+
+  *** SIMULATE BIVARIATE CLAYTON COPULA PAIR ***;
+  subroutine clayton_bvc_sim(u,v,o);
+    outargs u,v;
+    _u1 = rand("uniform");
+    _u2 = rand("uniform");
+    u = _u1;
+    v = ((_u1**(-1*o)) * (_u2**(-1*o/(1+o)) - 1 ) + 1)**(-1/o);
+  endsub;
+
+
+  **********************************************************************************;
+  *** FCMP BIVARIATE GUMBEL COPULA FUNCTIONS                                     ***;
+  **********************************************************************************;
+
   *** TO ADD ***;
+
+
+
 
 run;
 quit;
 
 options cmplib = work.functions;
+
+
